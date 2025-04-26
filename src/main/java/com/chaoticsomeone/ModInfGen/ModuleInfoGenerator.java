@@ -173,7 +173,7 @@ public class ModuleInfoGenerator {
 		return collapseWhitespaces;
 	}
 
-	public void setCollapseWhitespaces(boolean collapseWhitespaces) {
+	private void setCollapseWhitespaces(boolean collapseWhitespaces) {
 		this.collapseWhitespaces = collapseWhitespaces;
 	}
 
