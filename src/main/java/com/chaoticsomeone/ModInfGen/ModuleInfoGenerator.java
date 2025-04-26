@@ -28,7 +28,7 @@ public class ModuleInfoGenerator {
 		this(false);
 	}
 
-	public void generate() {
+	public String generate() {
 		moduleInfo = gson.fromJson(readJsonString(configFilePath), ModuleInfo.class);
 
 		try {
@@ -37,10 +37,12 @@ public class ModuleInfoGenerator {
 			moduleInfo.expandRoot();
 			moduleInfo.scanForModules();
 
-			System.out.println(generateModuleInfoContent(moduleInfo));
+			return generateModuleInfoContent(moduleInfo);
 		} catch (IllegalArgumentException e) {
 			e.printStackTrace();
 		}
+
+		return null;
 	}
 
 	public void generateTemplate() {
@@ -197,9 +199,15 @@ public class ModuleInfoGenerator {
 		this.collapseWhitespaces = collapseWhitespaces;
 	}
 
+	private File getOutputFile() {
+		return new File(moduleInfo.getSourceRoot(), "module-info.java");
+	}
+
 	public static void main(String[] args) {
 		ModuleInfoGenerator generator = new ModuleInfoGenerator(false);
+
 		boolean doGenerate = true;
+		boolean isDryRun = false;
 
 		for (String arg : args) {
 			if (arg.equalsIgnoreCase("-w")) {
@@ -207,11 +215,21 @@ public class ModuleInfoGenerator {
 			} else if (arg.equalsIgnoreCase("-n")) {
 				generator.generateTemplate();
 				doGenerate = false;
+			} else if (arg.equalsIgnoreCase("--dry-run")) {
+				isDryRun = true;
 			}
 		}
 
 		if (doGenerate) {
-			generator.generate();
+			String output = generator.generate();
+
+			if (!isDryRun) {
+				try (BufferedWriter bw = new BufferedWriter(new FileWriter(generator.getOutputFile()))) {
+					bw.write(output);
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
+			}
 		}
 	}
 }
