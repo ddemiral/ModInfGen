@@ -3,6 +3,8 @@ package com.chaoticsomeone.ModInfGen.model;
 import com.google.gson.annotations.Expose;
 import com.google.gson.annotations.SerializedName;
 
+import java.io.File;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
@@ -37,6 +39,8 @@ public class ModuleInfo {
 	@Expose
 	private Map<String, String> comments;
 
+	private final List<String> modules = new ArrayList<>();
+
 	private final Function<String, String> expandMapper = (s) -> {
 		if (s.equals(".")) {
 			return getModuleName();
@@ -46,6 +50,29 @@ public class ModuleInfo {
 			return s;
 		}
 	};
+
+	public void scanForModules() {
+		if (getSourceRoot() == null || getSourceRoot().isBlank()) {
+			return;
+		}
+
+		File root = new File(getSourceRoot(), moduleName.replace(".", "/"));
+		scanModule(root);
+	}
+
+	private void scanModule(File directory) {
+		File root = new File(getSourceRoot());
+		File[] files = directory.listFiles();
+		modules.add(directory.getPath().replace(root.getPath() + "\\", "").replace("\\", ".").replace("/", "."));
+
+		if (files != null) {
+			for (File file : files) {
+				if (file.isDirectory()) {
+					scanModule(file);
+				}
+			}
+		}
+	}
 
 	public void expandRoot() {
 		this.exports = exports.stream().map(expandMapper).toList();
@@ -159,5 +186,9 @@ public class ModuleInfo {
 
 	public String getComment(String key) {
 		return comments.get(key);
+	}
+
+	public List<String> getModules() {
+		return modules;
 	}
 }

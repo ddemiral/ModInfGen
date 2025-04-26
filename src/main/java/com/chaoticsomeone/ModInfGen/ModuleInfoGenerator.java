@@ -5,6 +5,7 @@ import com.chaoticsomeone.ModInfGen.model.OpensDeclaration;
 import com.google.gson.Gson;
 
 import java.io.*;
+import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -15,6 +16,7 @@ public class ModuleInfoGenerator {
 
 	private final Gson gson = new Gson();
 	private final String configFilePath = "module-info.json5";
+	private ModuleInfo moduleInfo;
 
 	private boolean collapseWhitespaces;
 
@@ -27,12 +29,13 @@ public class ModuleInfoGenerator {
 	}
 
 	public void generate() {
-		ModuleInfo moduleInfo = gson.fromJson(readJsonString(configFilePath), ModuleInfo.class);
+		moduleInfo = gson.fromJson(readJsonString(configFilePath), ModuleInfo.class);
 
 		try {
 			moduleInfo.validateVariables();
 			moduleInfo.expandVariables();
 			moduleInfo.expandRoot();
+			moduleInfo.scanForModules();
 
 			System.out.println(generateModuleInfoContent(moduleInfo));
 		} catch (IllegalArgumentException e) {
@@ -91,6 +94,23 @@ public class ModuleInfoGenerator {
 		}
 	}
 
+	private void expandWildcard(SmartStringBuilder builder, String baseline, String s) {
+		String postfix = s.substring(1);
+		List<String> modules = moduleInfo.getModules().stream().filter(m -> m.endsWith(postfix)).toList();
+
+		for (String module : modules) {
+			builder.appendFmtLn(baseline.replaceFirst("%s", module));
+		}
+	}
+
+	private void addLine(SmartStringBuilder builder, String line, String value) {
+		if (value.startsWith("*")) {
+			expandWildcard(builder, line, value);
+		} else {
+			builder.appendFmtLn(line, value);
+		}
+	}
+
 	private String generateModuleInfoContent(ModuleInfo moduleInfo) {
 		SmartStringBuilder outputBuilder = new SmartStringBuilder();
 
@@ -109,17 +129,17 @@ public class ModuleInfoGenerator {
 		outputBuilder.appendSectionLn(() -> {
 			outputBuilder.appendComment(moduleInfo.getComment("exports"));
 			for (String export : moduleInfo.getExports()) {
-				outputBuilder.appendFmtLn("exports %s;", export);
+				addLine(outputBuilder, "exports %s;", export);
 			}
 		});
 
 		outputBuilder.appendSectionLn(() -> {
 			outputBuilder.appendComment(moduleInfo.getComment("opens"));
 			for (OpensDeclaration opens : moduleInfo.getOpens()) {
-				String baseLine = String.format("opens %s to %s;", "%s", opens.getTargetModule());
+				String baseline = String.format("opens %%s to %s;", opens.getTargetModule());
 
 				for (String sourceModule : opens.getSourceModules()) {
-					outputBuilder.appendFmtLn(baseLine, sourceModule);
+					addLine(outputBuilder, baseline, sourceModule);
 				}
 			}
 		});
