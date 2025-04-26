@@ -105,8 +105,10 @@ public class ModuleInfo {
 			setExports(getExports().stream().map(variableMapper).toList());
 			setLegacy(getLegacy().stream().map(variableMapper).toList());
 
-			for (String commentKey : comments.keySet()) {
-				comments.put(commentKey, variableMapper.apply(comments.get(commentKey)));
+			if (comments != null) {
+				for (String commentKey : comments.keySet()) {
+					comments.put(commentKey, variableMapper.apply(comments.get(commentKey)));
+				}
 			}
 
 			for (OpensDeclaration open : opens) {
@@ -185,6 +187,10 @@ public class ModuleInfo {
 	}
 
 	public String getComment(String key) {
+		if (comments == null) {
+			return null;
+		}
+
 		return comments.get(key);
 	}
 
