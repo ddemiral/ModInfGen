@@ -61,9 +61,17 @@ public class SmartStringBuilder {
 		indent = Math.max(0, indent + offset);
 	}
 
+	public String toString(boolean collapseWhitespace) {
+		if (collapseWhitespace) {
+			Matcher matcher = Pattern.compile("\t+").matcher(sb.toString());
+			return matcher.replaceAll("\t");
+		}
+
+		return sb.toString();
+	}
+
 	@Override
 	public String toString() {
-		Matcher matcher = Pattern.compile("\t+").matcher(sb.toString());
-		return matcher.replaceAll("\t");
+		return toString(false);
 	}
 }

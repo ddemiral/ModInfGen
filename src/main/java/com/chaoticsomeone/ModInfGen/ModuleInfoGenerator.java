@@ -4,9 +4,7 @@ import com.chaoticsomeone.ModInfGen.model.ModuleInfo;
 import com.chaoticsomeone.ModInfGen.model.OpensDeclaration;
 import com.google.gson.Gson;
 
-import java.io.BufferedReader;
-import java.io.FileReader;
-import java.io.IOException;
+import java.io.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -17,31 +15,83 @@ public class ModuleInfoGenerator {
 
 	private final Gson gson = new Gson();
 	private final String configFilePath = "module-info.json5";
-	private final ModuleInfo moduleInfo;
 
-	private final boolean collapseWhitespaces;
+	private boolean collapseWhitespaces;
 
 	public ModuleInfoGenerator(boolean collapseWhitespaces) {
 		this.collapseWhitespaces = collapseWhitespaces;
-
-		moduleInfo = gson.fromJson(readJsonString(configFilePath), ModuleInfo.class);
-
-		try {
-			moduleInfo.validateVariables();
-			moduleInfo.expandVariables();
-			moduleInfo.expandRoot();
-
-			System.out.println(generateModuleInfoContent());
-		} catch (IllegalArgumentException e) {
-			e.printStackTrace();
-		}
 	}
 
 	public ModuleInfoGenerator() {
 		this(false);
 	}
 
-	private String generateModuleInfoContent() {
+	public void generate() {
+		ModuleInfo moduleInfo = gson.fromJson(readJsonString(configFilePath), ModuleInfo.class);
+
+		try {
+			moduleInfo.validateVariables();
+			moduleInfo.expandVariables();
+			moduleInfo.expandRoot();
+
+			System.out.println(generateModuleInfoContent(moduleInfo));
+		} catch (IllegalArgumentException e) {
+			e.printStackTrace();
+		}
+	}
+
+	public void generateTemplate() {
+		File outputFile = new File(configFilePath);
+
+		if (outputFile.exists()) {
+			return;
+		}
+
+		SmartStringBuilder outputBuilder = new SmartStringBuilder();
+
+		outputBuilder.appendLn("{");
+		outputBuilder.alterIndent(1);
+
+		outputBuilder.appendLn("\"module\": \"\",");
+		outputBuilder.appendLn("\"source-root\": \"\",\n");
+
+		outputBuilder.appendLn("\"variables\": {");
+		outputBuilder.appendLn("},\n");
+
+		outputBuilder.appendLn("\"requires\": [");
+		outputBuilder.appendLn("],\n");
+
+		outputBuilder.appendLn("\"exports\": [");
+		outputBuilder.appendLn("],\n");
+
+		outputBuilder.appendLn("\"opens\": [");
+		outputBuilder.appendLn("],\n");
+
+		outputBuilder.appendLn("\"legacy\": [");
+		outputBuilder.appendLn("],\n");
+
+		outputBuilder.appendLn("\"comments\": {");
+		outputBuilder.alterIndent(1);
+		outputBuilder.appendLn("\"header\": \"\",");
+		outputBuilder.appendLn("\"footer\": \"\",");
+		outputBuilder.appendLn("\"requires\": \"\",");
+		outputBuilder.appendLn("\"exports\": \"\",");
+		outputBuilder.appendLn("\"opens\": \"\",");
+		outputBuilder.appendLn("\"legacy\": \"\"");
+		outputBuilder.alterIndent(-1);
+		outputBuilder.appendLn("}");
+
+		outputBuilder.alterIndent(-1);
+		outputBuilder.appendLn("}");
+
+		try (BufferedWriter bw = new BufferedWriter(new FileWriter(outputFile))) {
+			bw.write(outputBuilder.toString());
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+	}
+
+	private String generateModuleInfoContent(ModuleInfo moduleInfo) {
 		SmartStringBuilder outputBuilder = new SmartStringBuilder();
 
 		outputBuilder.appendComment(moduleInfo.getComment("header"), 0, 2);
@@ -87,7 +137,7 @@ public class ModuleInfoGenerator {
 
 		outputBuilder.appendComment(moduleInfo.getComment("footer"), 2);
 
-		return outputBuilder.toString();
+		return outputBuilder.toString(true);
 	}
 
 	private String readJsonString(String path) {
@@ -119,17 +169,29 @@ public class ModuleInfoGenerator {
 		return matcher.replaceAll("");
 	}
 
+	public boolean isCollapseWhitespaces() {
+		return collapseWhitespaces;
+	}
+
+	public void setCollapseWhitespaces(boolean collapseWhitespaces) {
+		this.collapseWhitespaces = collapseWhitespaces;
+	}
 
 	public static void main(String[] args) {
-		boolean collapseWhitespaces = false;
+		ModuleInfoGenerator generator = new ModuleInfoGenerator(false);
+		boolean doGenerate = true;
 
 		for (String arg : args) {
 			if (arg.equalsIgnoreCase("-w")) {
-				collapseWhitespaces = true;
+				generator.setCollapseWhitespaces(true);
+			} else if (arg.equalsIgnoreCase("-n")) {
+				generator.generateTemplate();
+				doGenerate = false;
 			}
 		}
 
-		ModuleInfoGenerator generator = new ModuleInfoGenerator(collapseWhitespaces);
-
+		if (doGenerate) {
+			generator.generate();
+		}
 	}
 }
